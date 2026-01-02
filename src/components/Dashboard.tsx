@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { EmailList } from './EmailList';
 import { EmailDetail } from './EmailDetail';
 import { StatsHeader } from './StatsHeader';
+import { GmailSettingsPanel } from './GmailSettings';
 import { mockEmails, calculateStats } from '@/data/mockEmails';
 import { Email } from '@/types/email';
 
@@ -53,6 +54,9 @@ export const Dashboard = () => {
     setSelectedEmail(email);
   };
 
+  // Check if current view is a settings view
+  const isSettingsView = activeView === 'settings';
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar 
@@ -62,33 +66,39 @@ export const Dashboard = () => {
       />
       
       <main className="flex-1 flex flex-col overflow-hidden">
-        <StatsHeader 
-          stats={stats} 
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
+        {!isSettingsView && (
+          <StatsHeader 
+            stats={stats} 
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        )}
         
-        <div className="flex-1 flex overflow-hidden">
-          {/* Email List */}
-          <div className="w-[400px] border-r border-border/50 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-border/50">
-              <h2 className="font-semibold text-foreground capitalize">
-                {activeView === 'inbox' ? 'All Emails' : activeView.replace('_', ' ')}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {filteredEmails.length} email{filteredEmails.length !== 1 ? 's' : ''}
-              </p>
+        {isSettingsView ? (
+          <GmailSettingsPanel />
+        ) : (
+          <div className="flex-1 flex overflow-hidden">
+            {/* Email List */}
+            <div className="w-[400px] border-r border-border/50 flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-border/50">
+                <h2 className="font-semibold text-foreground capitalize">
+                  {activeView === 'inbox' ? 'All Emails' : activeView.replace('_', ' ')}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {filteredEmails.length} email{filteredEmails.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <EmailList 
+                emails={filteredEmails} 
+                selectedId={selectedEmail?.id ?? null}
+                onSelect={handleEmailSelect}
+              />
             </div>
-            <EmailList 
-              emails={filteredEmails} 
-              selectedId={selectedEmail?.id ?? null}
-              onSelect={handleEmailSelect}
-            />
-          </div>
 
-          {/* Email Detail */}
-          <EmailDetail email={selectedEmail} />
-        </div>
+            {/* Email Detail */}
+            <EmailDetail email={selectedEmail} />
+          </div>
+        )}
       </main>
     </div>
   );
