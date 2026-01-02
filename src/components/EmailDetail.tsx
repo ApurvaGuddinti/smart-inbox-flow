@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Email } from '@/types/email';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Reply, 
   Forward, 
@@ -16,10 +18,14 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface EmailDetailProps {
   email: Email | null;
@@ -34,6 +40,79 @@ const actionIcons = {
 };
 
 export const EmailDetail = ({ email }: EmailDetailProps) => {
+  const { toast } = useToast();
+  const [replyText, setReplyText] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateReply = async () => {
+    if (!email) return;
+    
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-reply', {
+        body: {
+          emailSubject: email.subject,
+          emailBody: email.body,
+          senderEmail: email.fromEmail,
+          promptTemplate: 'Please respond in a professional and helpful tone. Keep the reply concise and address all points mentioned in the email.',
+        },
+      });
+
+      if (error) throw error;
+      
+      setReplyText(data.reply);
+      setIsEditing(true);
+      toast({
+        title: "Reply Generated",
+        description: "AI has generated a reply. You can edit it before sending.",
+      });
+    } catch (error) {
+      console.error('Error generating reply:', error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate reply",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!email || !replyText.trim()) return;
+    
+    setIsSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: email.fromEmail,
+          subject: `Re: ${email.subject}`,
+          body: replyText,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Email Sent",
+        description: `Reply sent to ${email.fromEmail}`,
+      });
+      setReplyText('');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Send Failed",
+        description: error instanceof Error ? error.message : "Failed to send email",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   if (!email) {
     return (
       <div className="flex-1 flex items-center justify-center glass-panel">
@@ -202,27 +281,138 @@ export const EmailDetail = ({ email }: EmailDetailProps) => {
           </div>
         )}
 
-        {/* AI Suggested Reply */}
-        {email.suggestedReply && email.threatLevel === 'safe' && (
-          <div>
+        {/* Reply Section */}
+        {email.threatLevel !== 'phishing' && (
+          <div className="mb-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-info" />
-              AI Suggested Reply
+              {isEditing ? 'Compose Reply' : 'AI Auto-Reply'}
             </h3>
-            <div className="p-4 rounded-xl bg-info/5 border border-info/20">
-              <p className="text-sm text-foreground whitespace-pre-wrap mb-4">
-                {email.suggestedReply}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button size="sm" className="bg-info hover:bg-info/90 text-info-foreground">
-                  <Send className="w-3 h-3 mr-1" />
-                  Send Reply
-                </Button>
-                <Button size="sm" variant="outline" className="border-info/30 text-info hover:bg-info/10">
-                  Edit First
-                </Button>
+            
+            {isEditing ? (
+              <div className="p-4 rounded-xl bg-info/5 border border-info/20">
+                <Textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Write your reply..."
+                  className="min-h-[150px] bg-secondary/50 border-border/50 mb-4"
+                />
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    onClick={handleSendReply}
+                    disabled={isSending || !replyText.trim()}
+                    className="bg-success hover:bg-success/90 text-success-foreground"
+                  >
+                    {isSending ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3 h-3 mr-1" />
+                        Send Reply
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleGenerateReply}
+                    disabled={isGenerating}
+                    className="border-info/30 text-info hover:bg-info/10"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Regenerate
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => { setIsEditing(false); setReplyText(''); }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-info/5 border border-info/20">
+                {email.suggestedReply ? (
+                  <>
+                    <p className="text-sm text-foreground whitespace-pre-wrap mb-4">
+                      {email.suggestedReply}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => {
+                          setReplyText(email.suggestedReply || '');
+                          handleSendReply();
+                        }}
+                        disabled={isSending}
+                        className="bg-info hover:bg-info/90 text-info-foreground"
+                      >
+                        {isSending ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3 h-3 mr-1" />
+                            Send Reply
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          setReplyText(email.suggestedReply || '');
+                          setIsEditing(true);
+                        }}
+                        className="border-info/30 text-info hover:bg-info/10"
+                      >
+                        Edit First
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Generate an AI-powered reply for this email
+                    </p>
+                    <Button 
+                      size="sm"
+                      onClick={handleGenerateReply}
+                      disabled={isGenerating}
+                      className="bg-info hover:bg-info/90 text-info-foreground"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Generate AI Reply
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
