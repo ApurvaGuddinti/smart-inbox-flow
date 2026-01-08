@@ -4,6 +4,7 @@ import { EmailList } from './EmailList';
 import { EmailDetail } from './EmailDetail';
 import { StatsHeader } from './StatsHeader';
 import { GmailSettingsPanel } from './GmailSettings';
+import { ComposeEmail } from './ComposeEmail';
 import { mockEmails, calculateStats } from '@/data/mockEmails';
 import { Email } from '@/types/email';
 
@@ -11,6 +12,7 @@ export const Dashboard = () => {
   const [activeView, setActiveView] = useState('inbox');
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
 
   const stats = useMemo(() => calculateStats(mockEmails), []);
 
@@ -62,7 +64,8 @@ export const Dashboard = () => {
       <Sidebar 
         stats={stats} 
         activeView={activeView} 
-        onViewChange={setActiveView} 
+        onViewChange={setActiveView}
+        onCompose={() => setIsComposing(true)}
       />
       
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -76,6 +79,8 @@ export const Dashboard = () => {
         
         {isSettingsView ? (
           <GmailSettingsPanel />
+        ) : isComposing ? (
+          <ComposeEmail onClose={() => setIsComposing(false)} />
         ) : (
           <div className="flex-1 flex overflow-hidden">
             {/* Email List */}
