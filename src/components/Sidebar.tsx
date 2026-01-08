@@ -8,18 +8,21 @@ import {
   Folder,
   AlertTriangle,
   CheckCircle2,
-  Bot
+  Bot,
+  PenSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EmailStats } from '@/types/email';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   stats: EmailStats;
   activeView: string;
   onViewChange: (view: string) => void;
+  onCompose: () => void;
 }
 
-export const Sidebar = ({ stats, activeView, onViewChange }: SidebarProps) => {
+export const Sidebar = ({ stats, activeView, onViewChange, onCompose }: SidebarProps) => {
   const navItems = [
     { id: 'inbox', label: 'Inbox', icon: Inbox, count: stats.unread },
     { id: 'sorted', label: 'AI Sorted', icon: Folder, count: stats.total },
@@ -46,6 +49,13 @@ export const Sidebar = ({ stats, activeView, onViewChange }: SidebarProps) => {
             <p className="text-xs text-muted-foreground">Intelligent Email</p>
           </div>
         </div>
+        <Button 
+          onClick={onCompose}
+          className="w-full mt-4 bg-primary hover:bg-primary/90"
+        >
+          <PenSquare className="w-4 h-4 mr-2" />
+          Compose
+        </Button>
       </div>
 
       {/* Navigation */}
