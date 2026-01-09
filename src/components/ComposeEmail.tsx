@@ -72,7 +72,7 @@ export const ComposeEmail = ({ onClose, defaultTo = '' }: ComposeEmailProps) => 
         </Button>
       </div>
 
-      <div className="flex-1 p-6 space-y-4">
+      <div className="flex-1 p-6 space-y-4 overflow-auto">
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-1 block">To</label>
           <Input
@@ -94,16 +94,18 @@ export const ComposeEmail = ({ onClose, defaultTo = '' }: ComposeEmailProps) => 
           />
         </div>
 
-        <div className="flex-1">
+        <div>
           <label className="text-sm font-medium text-muted-foreground mb-1 block">Message</label>
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write your message..."
-            className="min-h-[300px] bg-secondary/50 border-border/50"
+            className="min-h-[200px] bg-secondary/50 border-border/50"
           />
         </div>
+      </div>
 
+      <div className="p-6 border-t border-border/50">
         <Button
           onClick={handleSend}
           disabled={isSending}
